@@ -1,0 +1,58 @@
+FROM python:{{python_version}}-slim as python-base
+LABEL maintainer="Toggle <deploy@toggle.ai>"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    PYSETUP_PATH="/usr/src/app" \
+    VENV_PATH="/usr/src/app/.venv"
+
+ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+
+FROM python-base as builder-base
+
+WORKDIR $PYSETUP_PATH
+
+# OS UPDATES AND DEPENDENCIES
+RUN apt-get update \
+  && apt install \
+      curl ssh git \
+      -y \
+  && curl -sSL https://install.python-poetry.org | POETRY_HOME=/poetry python3 -
+
+RUN git config --global url.git@github.com:toggleglobal.insteadOf https://github.com/toggleglobal && \
+    mkdir -p -m 0600 $HOME/.ssh && \
+    ssh-keyscan -H github.com >>$HOME/.ssh/known_hosts
+
+COPY pyproject.toml pyproject.toml
+COPY poetry.lock poetry.lock
+
+ENV PATH="${PATH}:/poetry/bin:/home/app-user/.local/bin"
+ENV PYTHONPATH "${PYTHONPATH}:/usr/src/app"
+
+RUN --mount=type=ssh poetry install --without dev
+
+FROM python-base as production
+ENV FASTAPI_ENV=production
+ENV PYTHONPATH "${PYTHONPATH}:/usr/src/app"
+
+WORKDIR $PYSETUP_PATH
+
+COPY --from=builder-base $VENV_PATH $VENV_PATH
+COPY src/  $PYSETUP_PATH
+
+RUN groupadd -r --gid 2000 app-user \
+  && useradd -r -m --uid 2000 -s /bin/false -g app-user app-user \
+  && chown -R app-user:app-user $PYSETUP_PATH  \
+  && chmod -R 554 $PYSETUP_PATH
+
+# LISTENING TO
+EXPOSE 8081
+
+# LIGHT IT UP
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8081"]

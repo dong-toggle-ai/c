@@ -6,10 +6,13 @@ authors = ["Dong Wang <dong@toggle.ai>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^{{python_version}}"
 fastapi = "^0.98.0"
 uvicorn = "^0.22.0"
-
+{% if py_grpc -%}
+py-grpc = {git = "git@github.com:toggleglobal/py-grpc.git", branch="main"}
+{% endif -%}
+copier = "^8.0.0"
 
 [build-system]
 requires = ["poetry-core"]

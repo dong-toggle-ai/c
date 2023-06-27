@@ -1,0 +1,12 @@
+# questions
+project_name:
+    type: str
+    help: What is your project name?
+
+python_version:
+    type: str
+    help: What is your project's python version?
+
+py_grpc:
+    type: bool
+    help: Does the project need py_grpc lib?
