@@ -7,6 +7,10 @@ python_version:
     type: str
     help: What is your project's python version?
 
+docker:
+    type: bool
+    help: Does the project need docker?
+
 py_grpc:
     type: bool
     help: Does the project need py_grpc lib?
